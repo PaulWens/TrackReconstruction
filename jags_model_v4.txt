@@ -1,0 +1,48 @@
+data {
+    tauw[1] <- sigmaw[1]^(-2)
+    tauw[2] <- sigmaw[2]^(-2)
+    firsttau <- ifelse(m[1]-1, tauw[2], tauw[1]) # precision of first location   
+    }
+
+model  
+{
+
+## Priors
+sigma[1] ~ dunif(0, 0.1)  # Process noise sd, x
+sigma[2] ~ dunif(0, 0.1)  # Process noise sd, y
+
+## variance-covariance precision matrix
+iSigma[1,1] <- sigma[1]^(-2)
+iSigma[1,2] <- 0
+iSigma[2,1] <- 0
+iSigma[2,2] <- sigma[2]^(-2)
+
+## Priors on 1st velocity correction
+vcor[1,1] ~ dunif(-1, 1)
+vcor[1,2] ~ dunif(-1, 1)
+
+## Priors on 1st position
+x[1,1] ~ dnorm(0, firsttau)
+x[1,2] ~ dnorm(0, firsttau)
+ 
+## 2nd whale position = first position + displacement from DR + velocity correction*delta
+x[2,1] <- x[1,1] + ddrx[1] + vcor[1,1]/1000*delta[1]
+x[2,2] <- x[1,2] + ddry[1] + vcor[1,2]/1000*delta[1]
+
+## CRW process on velocity correction
+for(j in 2:(N-1)){
+    vcor[j,1:2] ~ dmnorm(vcor[j-1,], iSigma[,]/delta[j])
+
+    ## Update whale position  
+    x[j+1,1] <- x[j,1] + ddrx[j] + vcor[j,1]/1000*delta[j]
+    x[j+1,2] <- x[j,2] + ddry[j] + vcor[j,2]/1000*delta[j]
+}
+
+## Observation model for visual position data
+for(j in 1:N){
+    tauw1[j] <- ifelse(m[j]-1, tauw[2], tauw[1])
+    Xwx[j] ~ dnorm(x[j,1], tauw1[j])
+    Xwy[j] ~ dnorm(x[j,2], tauw1[j])
+}
+}
+

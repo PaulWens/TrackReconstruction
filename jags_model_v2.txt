@@ -1,0 +1,43 @@
+model  
+{
+
+## Priors
+sigma[1] ~ dunif(0, 0.1)  # Process noise sd, x
+sigma[2] ~ dunif(0, 0.1)  # Process noise sd, y
+
+## variance-covariance precision matrix
+iSigma[1,1] <- sigma[1]^(-2)
+iSigma[1,2] <- 0
+iSigma[2,1] <- 0
+iSigma[2,2] <- sigma[2]^(-2)
+
+## Priors on 1st velocity correction
+vcor[1,1] ~ dunif(-1, 1)
+vcor[1,2] ~ dunif(-1, 1)
+
+## Priors on 1st position
+x[1,1] ~ dt(0, tauF[1,1], nuF[1,1])
+x[1,2] ~ dt(0, tauF[1,2], nuF[1,2])
+ 
+## 2nd whale position = first position + displacement from DR + velocity correction*delta
+x[2,1] <- x[1,1] + ddrx[1] + vcor[1,1]/1000*delta[1]
+x[2,2] <- x[1,2] + ddry[1] + vcor[1,2]/1000*delta[1]
+
+## CRW process on velocity correction
+for(j in 2:(N-1)){
+    vcor[j,1:2] ~ dmnorm(vcor[j-1,], iSigma[,]/delta[j])
+
+    ## Update whale position  
+    x[j+1,1] <- x[j,1] + ddrx[j] + vcor[j,1]/1000*delta[j]
+    x[j+1,2] <- x[j,2] + ddry[j] + vcor[j,2]/1000*delta[j]
+}
+
+## Observation model for FGPS data
+for(j in 1:N){
+    for(k in (idxF[j]):(idxF[j+1]-1)){
+        XFx[k] ~ dt(x[j,1], tauF[k,1], nuF[k,1])
+        XFy[k] ~ dt(x[j,2], tauF[k,2], nuF[k,2])
+    }
+}
+}
+

@@ -1,0 +1,62 @@
+data {
+    pi <- 3.141592653589
+    pi2 <- 2*pi
+    firstsd <- ifelse(m[1]-1, (sigmar[2]*R[1]), (sigmar[1]*R[1])) # sd of first location if visual   
+    }
+
+model  
+{
+
+## Priors
+sigma[1] ~ dunif(0, 0.1)  # Process noise sd, x
+sigma[2] ~ dunif(0, 0.1)  # Process noise sd, y
+
+## variance-covariance precision matrix
+iSigma[1,1] <- sigma[1]^(-2)
+iSigma[1,2] <- 0
+iSigma[2,1] <- 0
+iSigma[2,2] <- sigma[2]^(-2)
+
+## Priors on 1st velocity correction
+vcor[1,1] ~ dunif(-1, 1)
+vcor[1,2] ~ dunif(-1, 1)
+
+## Priors on 1st position
+x[1,1] ~ dnorm(0, firstsd^(-2))
+x[1,2] ~ dnorm(0, firstsd^(-2))
+ 
+## 2nd whale position = first position + displacement from DR + velocity correction*delta
+x[2,1] <- x[1,1] + ddrx[1] + vcor[1,1]/1000*delta[1]
+x[2,2] <- x[1,2] + ddry[1] + vcor[1,2]/1000*delta[1]
+
+## CRW process on velocity correction
+for(j in 2:(N-1)){
+    vcor[j,1:2] ~ dmnorm(vcor[j-1,], iSigma[,]/delta[j])
+
+    ## Update whale position  
+    x[j+1,1] <- x[j,1] + ddrx[j] + vcor[j,1]/1000*delta[j]
+    x[j+1,2] <- x[j,2] + ddry[j] + vcor[j,2]/1000*delta[j]
+}
+
+## Observation model for visual data
+for(j in 1:N){				
+    dbwx[j] <- x[j,1] - Xbx[j]   # boat-whale orthogonal distance, x
+    dbwy[j] <- x[j,2] - Xby[j]   # boat-whale orthogonal distance, y
+        
+    ## Boat-whale range without error
+    r[j] <- sqrt(dbwx[j]^2 + dbwy[j]^2) 
+
+    ## Boat-whale range with error depends upon measurement type
+    R[j] ~ dnorm(r[j], rangesd[j]^(-2))
+    rangesd[j] <- ifelse(m[j]-1, sigmar[2]*r[j], sigmar[1]*r[j])
+
+    ## Bearing without error using four-quadrant arc tangent (-pi,pi]
+    at[j] <- atan(dbwx[j] / dbwy[j])
+    phi[j] <- ifelse(step(dbwy[j]), at[j], pi2*step(dbwx[j])+at[j]-pi)
+
+    ## Ones trick for bearing with error [i.e. Phi[i] ~ wC(phi[j], rho)]
+    wC[j] <- (1/pi2 * (1-rho^2) / (1+rho^2 - 2*rho*cos(Phi[j] - phi[j])))/1000
+    ones[j] ~ dbern(wC[j])
+}
+}
+
