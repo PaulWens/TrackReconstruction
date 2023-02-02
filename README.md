@@ -7,5 +7,5 @@ Data processing and visualision is in Matlab and mat2jags in used to interface w
 
 Start with "reconstruct_track_examples.m" and let me know if you run into problems (pjw [at] hi [dot] is)
 
-% Ref [1]. Wensveen PJ, Thomas L, Miller PJO 2015. A path reconstruction method integrating dead-reckoning and position fixes applied to humpback whales. Movement Ecology 3:31
+[1]. Wensveen PJ, Thomas L, Miller PJO 2015. A path reconstruction method integrating dead-reckoning and position fixes applied to humpback whales. Movement Ecology 3:31
 
